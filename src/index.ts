@@ -7,48 +7,103 @@ export const pause = async (ms: number): Promise<void> =>
     }
   })
 
-export const singleton = <T extends (...args) => Promise<any>>(fn: T) => {
-  let promise: Promise<any>
+export const pauseIncrement = (range: [number, number], ms: [number, number], limit = true) => {
+  let i = 0
 
-  return ((...args) => {
-    promise ??= fn(...args)
-    promise.then(() => promise = undefined)
-    return promise
-  }) as unknown as T
+  return () => {
+    let s = mapRange(i++, range, ms)
+    if (limit)
+      s = clamp(s, ms[0], ms[1])
+    return pause(s)
+  }
 }
 
 export const delegate = <T>() => {
   let resolve: (value: T | PromiseLike<T>) => void
   let reject: (reason?: any) => void
-  const promise = new Promise<T>((res, rej) => {
+  let promise = new Promise<T>((res, rej) => {
     resolve = res
     reject = rej
   })
   return { promise, resolve, reject }
 }
 
-export const poll = <T>(fn: (done: (data: T) => void) => any, delay: number, timeout: number = 0) => {
-  const { promise, resolve, reject } = delegate<T>()
-  let done: boolean
+export const singleton = <T>(fn: () => Promise<T>) => {
+  let promise: Promise<T>
 
-  const handle = (data: T) => {
-    done = true
-    resolve(data)
+  return () => {
+    promise ??= fn()
+    promise.finally(() => promise = undefined)
+    return promise
   }
+}
 
-  const run = async () => {
-    await fn(handle)
-    while (!done) {
-      await pause(delay)
-      await fn(handle)
+export const debounce = <T extends (...args: any[]) => Promise<unknown>>(threshold: number, fn: T) => {
+  let t: any
+  let d: ReturnType<typeof delegate>
+  return (...args: Parameters<T>) => {
+    if (!d) {
+      d = delegate()
+      d.promise.finally(() => d = undefined)
     }
+
+    clearTimeout(t)
+    t = setTimeout(() => {
+      const p = fn(...args)
+      p.then(x => d?.resolve(x))
+      p.catch(x => d?.reject(x))
+    }, threshold)
+
+    return d.promise as ReturnType<T>
+  }
+}
+
+export const throttle = <T extends (...args: any[]) => Promise<unknown>>(threshold: number, fn: T, tail = false) => {
+  let t: any
+  let n: number
+  let d: ReturnType<typeof delegate>
+  return (...args: Parameters<T>) => {
+    if (!d) {
+      d = delegate()
+      d.promise.finally(() => d = undefined)
+    }
+
+    clearTimeout(t)
+    const now = Date.now()
+    if (!n || now - n >= threshold) {
+      n = now
+      const p = fn(...args)
+      p.then(x => d?.resolve(x))
+      p.catch(x => d?.reject(x))
+    }
+    else if (tail)
+      t = setTimeout(() => {
+        const p = fn(...args)
+        p.then(x => d?.resolve(x))
+        p.catch(x => d?.reject(x))
+      }, threshold)
+
+    return d.promise as ReturnType<T>
+  }
+}
+
+export const mapRange = (value: number, source: [number, number], target: [number, number]) =>
+  target[0] + (value - source[0]) * (target[1] - target[0]) / (source[1] - source[0])
+
+export const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max)
+
+export const poll = async (fn: () => Promise<boolean>, threshold: [number, number], max: number) => {
+  let i = 0
+  const pi = pauseIncrement([0, max], threshold)
+
+  while (i < max) {
+    const x = await fn()
+    if (x)
+      return
+
+    await pi()
   }
 
-  if (timeout)
-    pause(timeout)
-      .then(() => reject("poll reached timeout"))
-
-  run()
-
-  return promise
+  throw new Error(`poll reached timeout (${max} ms)`)
 }

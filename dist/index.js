@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.poll = exports.delegate = exports.singleton = exports.pause = void 0;
+exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.delegate = exports.pauseIncrement = exports.pause = void 0;
 var pause = function (ms) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, new Promise(function (resolve, reject) {
@@ -49,19 +49,17 @@ var pause = function (ms) { return __awaiter(void 0, void 0, void 0, function ()
     });
 }); };
 exports.pause = pause;
-var singleton = function (fn) {
-    var promise;
-    return (function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
-        promise !== null && promise !== void 0 ? promise : (promise = fn.apply(void 0, args));
-        promise.then(function () { return promise = undefined; });
-        return promise;
-    });
+var pauseIncrement = function (range, ms, limit) {
+    if (limit === void 0) { limit = true; }
+    var i = 0;
+    return function () {
+        var s = (0, exports.mapRange)(i++, range, ms);
+        if (limit)
+            s = (0, exports.clamp)(s, ms[0], ms[1]);
+        return (0, exports.pause)(s);
+    };
 };
-exports.singleton = singleton;
+exports.pauseIncrement = pauseIncrement;
 var delegate = function () {
     var resolve;
     var reject;
@@ -72,38 +70,98 @@ var delegate = function () {
     return { promise: promise, resolve: resolve, reject: reject };
 };
 exports.delegate = delegate;
-var poll = function (fn, delay, timeout) {
-    if (timeout === void 0) { timeout = 0; }
-    var _a = exports.delegate(), promise = _a.promise, resolve = _a.resolve, reject = _a.reject;
-    var done;
-    var handle = function (data) {
-        done = true;
-        resolve(data);
+var singleton = function (fn) {
+    var promise;
+    return function () {
+        promise !== null && promise !== void 0 ? promise : (promise = fn());
+        promise.finally(function () { return promise = undefined; });
+        return promise;
     };
-    var run = function () { return __awaiter(void 0, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, fn(handle)];
-                case 1:
-                    _a.sent();
-                    _a.label = 2;
-                case 2:
-                    if (!!done) return [3 /*break*/, 5];
-                    return [4 /*yield*/, exports.pause(delay)];
-                case 3:
-                    _a.sent();
-                    return [4 /*yield*/, fn(handle)];
-                case 4:
-                    _a.sent();
-                    return [3 /*break*/, 2];
-                case 5: return [2 /*return*/];
-            }
-        });
-    }); };
-    if (timeout)
-        exports.pause(timeout)
-            .then(function () { return reject("poll reached timeout"); });
-    run();
-    return promise;
 };
+exports.singleton = singleton;
+var debounce = function (threshold, fn) {
+    var t;
+    var d;
+    return function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        if (!d) {
+            d = (0, exports.delegate)();
+            d.promise.finally(function () { return d = undefined; });
+        }
+        clearTimeout(t);
+        t = setTimeout(function () {
+            var p = fn.apply(void 0, args);
+            p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
+            p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
+        }, threshold);
+        return d.promise;
+    };
+};
+exports.debounce = debounce;
+var throttle = function (threshold, fn, tail) {
+    if (tail === void 0) { tail = false; }
+    var t;
+    var n;
+    var d;
+    return function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        if (!d) {
+            d = (0, exports.delegate)();
+            d.promise.finally(function () { return d = undefined; });
+        }
+        clearTimeout(t);
+        var now = Date.now();
+        if (!n || now - n >= threshold) {
+            n = now;
+            var p = fn.apply(void 0, args);
+            p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
+            p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
+        }
+        else if (tail)
+            t = setTimeout(function () {
+                var p = fn.apply(void 0, args);
+                p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
+                p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
+            }, threshold);
+        return d.promise;
+    };
+};
+exports.throttle = throttle;
+var mapRange = function (value, source, target) {
+    return target[0] + (value - source[0]) * (target[1] - target[0]) / (source[1] - source[0]);
+};
+exports.mapRange = mapRange;
+var clamp = function (value, min, max) {
+    return Math.min(Math.max(value, min), max);
+};
+exports.clamp = clamp;
+var poll = function (fn, threshold, max) { return __awaiter(void 0, void 0, void 0, function () {
+    var i, pi, x;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                i = 0;
+                pi = (0, exports.pauseIncrement)([0, max], threshold);
+                _a.label = 1;
+            case 1:
+                if (!(i < max)) return [3 /*break*/, 4];
+                return [4 /*yield*/, fn()];
+            case 2:
+                x = _a.sent();
+                if (x)
+                    return [2 /*return*/];
+                return [4 /*yield*/, pi()];
+            case 3:
+                _a.sent();
+                return [3 /*break*/, 1];
+            case 4: throw new Error("poll reached timeout (".concat(max, " ms)"));
+        }
+    });
+}); };
 exports.poll = poll;
