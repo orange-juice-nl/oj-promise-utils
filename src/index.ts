@@ -28,13 +28,16 @@ export const delegate = <T>() => {
   return { promise, resolve, reject }
 }
 
-export const singleton = <T>(fn: () => Promise<T>) => {
-  let promise: Promise<T>
+export const singleton = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(fn: T, hashFn?: H) => {
+  const cache: Record<string, Promise<unknown>> = {}
 
-  return () => {
-    promise ??= fn()
-    promise.finally(() => promise = undefined)
-    return promise
+  return (...args: Parameters<T>) => {
+    const hash = hashFn?.(...args) ?? JSON.stringify(args)
+    if (!cache[hash]) {
+      cache[hash] = fn(...args)
+      cache[hash].finally(() => delete cache[hash])
+    }
+    return cache[hash] as ReturnType<T>
   }
 }
 

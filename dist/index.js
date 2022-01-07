@@ -70,12 +70,20 @@ var delegate = function () {
     return { promise: promise, resolve: resolve, reject: reject };
 };
 exports.delegate = delegate;
-var singleton = function (fn) {
-    var promise;
+var singleton = function (fn, hashFn) {
+    var cache = {};
     return function () {
-        promise !== null && promise !== void 0 ? promise : (promise = fn());
-        promise.finally(function () { return promise = undefined; });
-        return promise;
+        var _a;
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        var hash = (_a = hashFn === null || hashFn === void 0 ? void 0 : hashFn.apply(void 0, args)) !== null && _a !== void 0 ? _a : JSON.stringify(args);
+        if (!cache[hash]) {
+            cache[hash] = fn.apply(void 0, args);
+            cache[hash].finally(function () { return delete cache[hash]; });
+        }
+        return cache[hash];
     };
 };
 exports.singleton = singleton;
