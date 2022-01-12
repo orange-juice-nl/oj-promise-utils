@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.delegate = exports.pauseIncrement = exports.pause = void 0;
+exports.rejectPending = exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.delegate = exports.pauseIncrement = exports.pause = void 0;
 var pause = function (ms) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, new Promise(function (resolve, reject) {
@@ -95,10 +95,8 @@ var debounce = function (threshold, fn) {
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        if (!d) {
+        if (!d)
             d = (0, exports.delegate)();
-            d.promise.finally(function () { return d = undefined; });
-        }
         clearTimeout(t);
         t = setTimeout(function () {
             var p = fn.apply(void 0, args);
@@ -109,35 +107,24 @@ var debounce = function (threshold, fn) {
     };
 };
 exports.debounce = debounce;
-var throttle = function (threshold, fn, tail) {
-    if (tail === void 0) { tail = false; }
-    var t;
+var throttle = function (threshold, fn, hashFn) {
     var n;
-    var d;
+    var p;
+    var h;
     return function () {
+        var _a;
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        if (!d) {
-            d = (0, exports.delegate)();
-            d.promise.finally(function () { return d = undefined; });
-        }
-        clearTimeout(t);
         var now = Date.now();
-        if (!n || now - n >= threshold) {
+        var hn = (_a = hashFn === null || hashFn === void 0 ? void 0 : hashFn.apply(void 0, args)) !== null && _a !== void 0 ? _a : JSON.stringify(args);
+        if (!n || now - n >= threshold || h !== hn) {
             n = now;
-            var p = fn.apply(void 0, args);
-            p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
-            p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
+            h = hn;
+            p = fn.apply(void 0, args);
         }
-        else if (tail)
-            t = setTimeout(function () {
-                var p = fn.apply(void 0, args);
-                p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
-                p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
-            }, threshold);
-        return d.promise;
+        return p;
     };
 };
 exports.throttle = throttle;
@@ -173,3 +160,25 @@ var poll = function (fn, threshold, max) { return __awaiter(void 0, void 0, void
     });
 }); };
 exports.poll = poll;
+var rejectPending = function (rejector, hashFn) {
+    var current;
+    var currHash;
+    return function () {
+        var _a;
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        var hash = (_a = hashFn === null || hashFn === void 0 ? void 0 : hashFn.apply(void 0, args)) !== null && _a !== void 0 ? _a : JSON.stringify(args);
+        if (currHash !== hash)
+            current === null || current === void 0 ? void 0 : current.reject("Cancelled");
+        currHash = hash;
+        var d = current = (0, exports.delegate)();
+        d.promise.then(function () { return current = undefined; });
+        var fn = rejector(function () { return d !== current; });
+        fn.apply(void 0, args).then(d.resolve)
+            .catch(d.reject);
+        return d.promise;
+    };
+};
+exports.rejectPending = rejectPending;

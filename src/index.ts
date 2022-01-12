@@ -44,11 +44,10 @@ export const singleton = <T extends (...args: any[]) => Promise<unknown>, H exte
 export const debounce = <T extends (...args: any[]) => Promise<unknown>>(threshold: number, fn: T) => {
   let t: any
   let d: ReturnType<typeof delegate>
+
   return (...args: Parameters<T>) => {
-    if (!d) {
+    if (!d)
       d = delegate()
-      d.promise.finally(() => d = undefined)
-    }
 
     clearTimeout(t)
     t = setTimeout(() => {
@@ -61,32 +60,20 @@ export const debounce = <T extends (...args: any[]) => Promise<unknown>>(thresho
   }
 }
 
-export const throttle = <T extends (...args: any[]) => Promise<unknown>>(threshold: number, fn: T, tail = false) => {
-  let t: any
+export const throttle = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(threshold: number, fn: T, hashFn?: H) => {
   let n: number
-  let d: ReturnType<typeof delegate>
+  let p: ReturnType<T>
+  let h: string
+
   return (...args: Parameters<T>) => {
-    if (!d) {
-      d = delegate()
-      d.promise.finally(() => d = undefined)
-    }
-
-    clearTimeout(t)
     const now = Date.now()
-    if (!n || now - n >= threshold) {
+    const hn = hashFn?.(...args) ?? JSON.stringify(args)
+    if (!n || now - n >= threshold || h !== hn) {
       n = now
-      const p = fn(...args)
-      p.then(x => d?.resolve(x))
-      p.catch(x => d?.reject(x))
+      h = hn
+      p = fn(...args) as any
     }
-    else if (tail)
-      t = setTimeout(() => {
-        const p = fn(...args)
-        p.then(x => d?.resolve(x))
-        p.catch(x => d?.reject(x))
-      }, threshold)
-
-    return d.promise as ReturnType<T>
+    return p
   }
 }
 
@@ -109,4 +96,25 @@ export const poll = async (fn: () => Promise<boolean>, threshold: [number, numbe
   }
 
   throw new Error(`poll reached timeout (${max} ms)`)
+}
+
+export const rejectPending = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(rejector: (reject: () => boolean) => T, hashFn?: H) => {
+  let current: ReturnType<typeof delegate>
+  let currHash: string
+
+  return (...args: Parameters<T>) => {
+    const hash = hashFn?.(...args) ?? JSON.stringify(args)
+    if (currHash !== hash)
+      current?.reject("Cancelled")
+
+    currHash = hash
+    const d = current = delegate()
+    d.promise.then(() => current = undefined)
+    const fn = rejector(() => d !== current)
+    fn(...args)
+      .then(d.resolve)
+      .catch(d.reject)
+
+    return d.promise
+  }
 }
