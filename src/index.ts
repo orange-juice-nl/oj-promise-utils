@@ -83,19 +83,25 @@ export const mapRange = (value: number, source: [number, number], target: [numbe
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
-export const poll = async (fn: () => Promise<boolean>, threshold: [number, number], max: number) => {
+export const poll = async <T extends () => Promise<unknown>>(fn: T, test: (d: Awaited<ReturnType<T>>) => boolean, threshold: [number, number], max: number): Promise<Awaited<ReturnType<T>>> => {
+  const now = Date.now()
   let i = 0
   const pi = pauseIncrement([0, max], threshold)
 
-  while (i < max) {
-    const x = await fn()
-    if (x)
-      return
+  while (i++ < max) {
+    try {
+      const x = await fn() as any
+      if (test(x))
+        return x
+    }
+    catch (err) {
+      console.error(err)
+    }
 
     await pi()
   }
 
-  throw new Error(`poll reached timeout (${max} ms)`)
+  throw new Error(`poll reached timeout (${Date.now() - now} ms)`)
 }
 
 export const rejectPending = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(rejector: (reject: () => boolean) => T, hashFn?: H) => {

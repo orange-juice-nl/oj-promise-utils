@@ -11,7 +11,8 @@ import { poll } from "oj-dom-utils"
 ### poll
 ```typescript
 await poll(
-  () => fetch(url).then(x => x.text()).then(x => x === "ok"), // test function, must return Promise<boolean>
+  () => fetch(url).then(x => x.text()), // function, must return Promise
+  x => x === "ok", // test function, must return boolean
   [500, 10000], // timeouts [start ms, end ms]
   10 // maximum attempts, timeouts are mapped to this value (lineair)
 )

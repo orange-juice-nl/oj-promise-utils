@@ -136,8 +136,8 @@ var clamp = function (value, min, max) {
     return Math.min(Math.max(value, min), max);
 };
 exports.clamp = clamp;
-var poll = function (fn, threshold, max) { return __awaiter(void 0, void 0, void 0, function () {
-    var i, pi, x;
+var poll = function (fn, test, threshold, max) { return __awaiter(void 0, void 0, void 0, function () {
+    var i, pi, x, err_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -145,17 +145,25 @@ var poll = function (fn, threshold, max) { return __awaiter(void 0, void 0, void
                 pi = (0, exports.pauseIncrement)([0, max], threshold);
                 _a.label = 1;
             case 1:
-                if (!(i < max)) return [3 /*break*/, 4];
-                return [4 /*yield*/, fn()];
+                if (!(i++ < max)) return [3 /*break*/, 7];
+                _a.label = 2;
             case 2:
-                x = _a.sent();
-                if (x)
-                    return [2 /*return*/];
-                return [4 /*yield*/, pi()];
+                _a.trys.push([2, 4, , 5]);
+                return [4 /*yield*/, fn()];
             case 3:
+                x = _a.sent();
+                if (test(x))
+                    return [2 /*return*/, x];
+                return [3 /*break*/, 5];
+            case 4:
+                err_1 = _a.sent();
+                console.error(err_1);
+                return [3 /*break*/, 5];
+            case 5: return [4 /*yield*/, pi()];
+            case 6:
                 _a.sent();
                 return [3 /*break*/, 1];
-            case 4: throw new Error("poll reached timeout (".concat(max, " ms)"));
+            case 7: throw new Error("poll reached timeout (".concat(max, " ms)"));
         }
     });
 }); };
