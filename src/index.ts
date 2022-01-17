@@ -1,11 +1,25 @@
-export const pause = async (ms: number): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const timeout = setTimeout(resolve, ms)
-    return () => {
-      clearTimeout(timeout)
-      reject("pause canceled")
-    }
+export const delegate = <T>() => {
+  let resolve: (value: T | PromiseLike<T>) => void
+  let reject: (reason?: any) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
   })
+  return { promise, resolve, reject }
+}
+
+export const pause = (ms: number) => {
+  const d = delegate<void>()
+  const timer = setTimeout(d.resolve, ms)
+
+  return {
+    promise: d.promise,
+    reject: () => {
+      clearTimeout(timer)
+      d.reject("pause canceled")
+    }
+  }
+}
 
 export const pauseIncrement = (range: [number, number], ms: [number, number], limit = true) => {
   let i = 0
@@ -16,16 +30,6 @@ export const pauseIncrement = (range: [number, number], ms: [number, number], li
       s = clamp(s, ms[0], ms[1])
     return pause(s)
   }
-}
-
-export const delegate = <T>() => {
-  let resolve: (value: T | PromiseLike<T>) => void
-  let reject: (reason?: any) => void
-  let promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-  return { promise, resolve, reject }
 }
 
 export const singleton = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(fn: T, hashFn?: H) => {
@@ -98,7 +102,7 @@ export const poll = async <T extends () => Promise<unknown>>(fn: T, test: (d: Aw
       console.error(err)
     }
 
-    await pi()
+    await pi().promise
   }
 
   throw new Error(`poll reached timeout (${Date.now() - now} ms)`)

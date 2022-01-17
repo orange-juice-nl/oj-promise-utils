@@ -36,18 +36,28 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rejectPending = exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.delegate = exports.pauseIncrement = exports.pause = void 0;
-var pause = function (ms) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, new Promise(function (resolve, reject) {
-                var timeout = setTimeout(resolve, ms);
-                return function () {
-                    clearTimeout(timeout);
-                    reject("pause canceled");
-                };
-            })];
+exports.rejectPending = exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.pauseIncrement = exports.pause = exports.delegate = void 0;
+var delegate = function () {
+    var resolve;
+    var reject;
+    var promise = new Promise(function (res, rej) {
+        resolve = res;
+        reject = rej;
     });
-}); };
+    return { promise: promise, resolve: resolve, reject: reject };
+};
+exports.delegate = delegate;
+var pause = function (ms) {
+    var d = (0, exports.delegate)();
+    var timer = setTimeout(d.resolve, ms);
+    return {
+        promise: d.promise,
+        reject: function () {
+            clearTimeout(timer);
+            d.reject("pause canceled");
+        }
+    };
+};
 exports.pause = pause;
 var pauseIncrement = function (range, ms, limit) {
     if (limit === void 0) { limit = true; }
@@ -60,16 +70,6 @@ var pauseIncrement = function (range, ms, limit) {
     };
 };
 exports.pauseIncrement = pauseIncrement;
-var delegate = function () {
-    var resolve;
-    var reject;
-    var promise = new Promise(function (res, rej) {
-        resolve = res;
-        reject = rej;
-    });
-    return { promise: promise, resolve: resolve, reject: reject };
-};
-exports.delegate = delegate;
 var singleton = function (fn, hashFn) {
     var cache = {};
     return function () {
@@ -137,10 +137,11 @@ var clamp = function (value, min, max) {
 };
 exports.clamp = clamp;
 var poll = function (fn, test, threshold, max) { return __awaiter(void 0, void 0, void 0, function () {
-    var i, pi, x, err_1;
+    var now, i, pi, x, err_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
+                now = Date.now();
                 i = 0;
                 pi = (0, exports.pauseIncrement)([0, max], threshold);
                 _a.label = 1;
@@ -159,11 +160,11 @@ var poll = function (fn, test, threshold, max) { return __awaiter(void 0, void 0
                 err_1 = _a.sent();
                 console.error(err_1);
                 return [3 /*break*/, 5];
-            case 5: return [4 /*yield*/, pi()];
+            case 5: return [4 /*yield*/, pi().promise];
             case 6:
                 _a.sent();
                 return [3 /*break*/, 1];
-            case 7: throw new Error("poll reached timeout (".concat(max, " ms)"));
+            case 7: throw new Error("poll reached timeout (".concat(Date.now() - now, " ms)"));
         }
     });
 }); };

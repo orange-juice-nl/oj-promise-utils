@@ -19,17 +19,21 @@ await poll(
 ```
 ### pause
 ```typescript
-await pause(1000) // pauses for 1 second
+const p = pause(1000) // pauses for 1 second
+
+p.promise.catch(() => {}) // call p.reject() to cancel
+await p.promise
+
 ```
 ### pauseIncrement
 ```typescript
 const pause = await pauseIncrement([0,4], [100, 2000], true)
-await pause() // pauses for 100 ms
-await pause() // pauses for 575 ms
-await pause() // pauses for 1050 ms
-await pause() // pauses for 1525 ms
-await pause() // pauses for 2000 ms
-await pause() // pauses for 2000 ms etc ...
+await pause().promise // pauses for 100 ms
+await pause().promise // pauses for 575 ms
+await pause().promise // pauses for 1050 ms
+await pause().promise // pauses for 1525 ms
+await pause().promise // pauses for 2000 ms
+await pause().promise // pauses for 2000 ms etc ...
 ```
 ### delegate
 ```typescript
@@ -40,7 +44,7 @@ d.resolve(true) // d.promise is resolved
 ```
 ### singleton
 ```typescript
-const get = singleton(() => fetch(url).then(x => x.json()))
+const get = singleton(url => fetch(url).then(x => x.json()))
 get() // executes api call
 get() // reuses previous call and returns that promise
 await get() // reuses previous call and returns that promise
