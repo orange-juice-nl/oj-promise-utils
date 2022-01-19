@@ -8,27 +8,35 @@ export const delegate = <T>() => {
   return { promise, resolve, reject }
 }
 
-export const pause = (ms: number) => {
+export const pause = (ms: number, autoStart = true) => {
   const d = delegate<void>()
-  const timer = setTimeout(d.resolve, ms)
-
-  return {
-    promise: d.promise,
-    reject: () => {
-      clearTimeout(timer)
-      d.reject("pause canceled")
-    }
+  const promise = d.promise
+  let timer: any
+  const reject = () => {
+    clearTimeout(timer)
+    d.reject("pause canceled")
   }
+  const start = () => {
+    if (timer)
+      throw new Error("timer already executed, autoStart param is true")
+    timer = setTimeout(d.resolve, ms)
+    return { promise, reject }
+  }
+
+  if (autoStart)
+    start()
+
+  return { start, promise, reject }
 }
 
 export const pauseIncrement = (range: [number, number], ms: [number, number], limit = true) => {
   let i = 0
 
-  return () => {
+  return (autoStart = true) => {
     let s = mapRange(i++, range, ms)
     if (limit)
       s = clamp(s, ms[0], ms[1])
-    return pause(s)
+    return pause(s, autoStart)
   }
 }
 

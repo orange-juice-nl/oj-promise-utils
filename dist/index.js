@@ -47,26 +47,35 @@ var delegate = function () {
     return { promise: promise, resolve: resolve, reject: reject };
 };
 exports.delegate = delegate;
-var pause = function (ms) {
+var pause = function (ms, autoStart) {
+    if (autoStart === void 0) { autoStart = true; }
     var d = (0, exports.delegate)();
-    var timer = setTimeout(d.resolve, ms);
-    return {
-        promise: d.promise,
-        reject: function () {
-            clearTimeout(timer);
-            d.reject("pause canceled");
-        }
+    var promise = d.promise;
+    var timer;
+    var reject = function () {
+        clearTimeout(timer);
+        d.reject("pause canceled");
     };
+    var start = function () {
+        if (timer)
+            throw new Error("timer already executed, autoStart param is true");
+        timer = setTimeout(d.resolve, ms);
+        return { promise: promise, reject: reject };
+    };
+    if (autoStart)
+        start();
+    return { start: start, promise: promise, reject: reject };
 };
 exports.pause = pause;
 var pauseIncrement = function (range, ms, limit) {
     if (limit === void 0) { limit = true; }
     var i = 0;
-    return function () {
+    return function (autoStart) {
+        if (autoStart === void 0) { autoStart = true; }
         var s = (0, exports.mapRange)(i++, range, ms);
         if (limit)
             s = (0, exports.clamp)(s, ms[0], ms[1]);
-        return (0, exports.pause)(s);
+        return (0, exports.pause)(s, autoStart);
     };
 };
 exports.pauseIncrement = pauseIncrement;

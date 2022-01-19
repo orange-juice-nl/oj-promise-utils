@@ -16,12 +16,17 @@ await poll(
   [500, 10000], // timeouts [start ms, end ms]
   10 // maximum attempts, timeouts are mapped to this value (lineair)
 )
+
 ```
 ### pause
 ```typescript
-const p = pause(1000) // pauses for 1 second
+await pause(1000).promise // pauses for 1 second
+
+const p = pause(1000, false) // timer isn't executed
 
 p.promise.catch(() => {}) // call p.reject() to cancel
+p.start() // timer is executed
+p.reject()
 await p.promise
 
 ```

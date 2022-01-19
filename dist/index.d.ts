@@ -3,11 +3,19 @@ export declare const delegate: <T>() => {
     resolve: (value: T | PromiseLike<T>) => void;
     reject: (reason?: any) => void;
 };
-export declare const pause: (ms: number) => {
+export declare const pause: (ms: number, autoStart?: boolean) => {
+    start: () => {
+        promise: Promise<void>;
+        reject: () => void;
+    };
     promise: Promise<void>;
     reject: () => void;
 };
-export declare const pauseIncrement: (range: [number, number], ms: [number, number], limit?: boolean) => () => {
+export declare const pauseIncrement: (range: [number, number], ms: [number, number], limit?: boolean) => (autoStart?: boolean) => {
+    start: () => {
+        promise: Promise<void>;
+        reject: () => void;
+    };
     promise: Promise<void>;
     reject: () => void;
 };
