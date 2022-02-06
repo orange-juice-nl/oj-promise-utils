@@ -110,7 +110,8 @@ var debounce = function (threshold, fn) {
         t = setTimeout(function () {
             var p = fn.apply(void 0, args);
             p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
-            p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
+            p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });            
+            p.finally(() => { d = undefined; });
         }, threshold);
         return d.promise;
     };
