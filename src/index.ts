@@ -66,6 +66,7 @@ export const debounce = <T extends (...args: any[]) => Promise<unknown>>(thresho
       const p = fn(...args)
       p.then(x => d?.resolve(x))
       p.catch(x => d?.reject(x))
+      p.finally(() => d = undefined)
     }, threshold)
 
     return d.promise as ReturnType<T>
