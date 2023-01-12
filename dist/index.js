@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rejectPending = exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.pauseIncrement = exports.pause = exports.delegate = void 0;
+exports.poll = exports.clamp = exports.mapRange = exports.throttle = exports.debounce = exports.singleton = exports.pauseIncrement = exports.pause = exports.delegate = void 0;
 var delegate = function () {
     var resolve;
     var reject;
@@ -179,25 +179,3 @@ var poll = function (fn, test, threshold, max) { return __awaiter(void 0, void 0
     });
 }); };
 exports.poll = poll;
-var rejectPending = function (rejector, hashFn) {
-    var current;
-    var currHash;
-    return function () {
-        var _a;
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
-        var hash = (_a = hashFn === null || hashFn === void 0 ? void 0 : hashFn.apply(void 0, args)) !== null && _a !== void 0 ? _a : JSON.stringify(args);
-        if (currHash !== hash)
-            current === null || current === void 0 ? void 0 : current.reject("Cancelled");
-        currHash = hash;
-        var d = current = (0, exports.delegate)();
-        d.promise.then(function () { return current = undefined; });
-        var fn = rejector(function () { return d !== current; });
-        fn.apply(void 0, args).then(d.resolve)
-            .catch(d.reject);
-        return d.promise;
-    };
-};
-exports.rejectPending = rejectPending;

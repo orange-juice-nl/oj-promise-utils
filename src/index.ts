@@ -1,6 +1,6 @@
 export const delegate = <T>() => {
-  let resolve: (value: T | PromiseLike<T>) => void
-  let reject: (reason?: any) => void
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: any) => void
   const promise = new Promise<T>((res, rej) => {
     resolve = res
     reject = rej
@@ -55,7 +55,7 @@ export const singleton = <T extends (...args: any[]) => Promise<unknown>, H exte
 
 export const debounce = <T extends (...args: any[]) => Promise<unknown>>(threshold: number, fn: T) => {
   let t: any
-  let d: ReturnType<typeof delegate>
+  let d: ReturnType<typeof delegate>|undefined
 
   return (...args: Parameters<T>) => {
     if (!d)
@@ -115,25 +115,4 @@ export const poll = async <T extends () => Promise<unknown>>(fn: T, test: (d: Aw
   }
 
   throw new Error(`poll reached timeout (${Date.now() - now} ms)`)
-}
-
-export const rejectPending = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(rejector: (reject: () => boolean) => T, hashFn?: H) => {
-  let current: ReturnType<typeof delegate>
-  let currHash: string
-
-  return (...args: Parameters<T>) => {
-    const hash = hashFn?.(...args) ?? JSON.stringify(args)
-    if (currHash !== hash)
-      current?.reject("Cancelled")
-
-    currHash = hash
-    const d = current = delegate()
-    d.promise.then(() => current = undefined)
-    const fn = rejector(() => d !== current)
-    fn(...args)
-      .then(d.resolve)
-      .catch(d.reject)
-
-    return d.promise
-  }
 }

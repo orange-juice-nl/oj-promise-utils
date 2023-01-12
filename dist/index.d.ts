@@ -25,4 +25,3 @@ export declare const throttle: <T extends (...args: any[]) => Promise<unknown>, 
 export declare const mapRange: (value: number, source: [number, number], target: [number, number]) => number;
 export declare const clamp: (value: number, min: number, max: number) => number;
 export declare const poll: <T extends () => Promise<unknown>>(fn: T, test: (d: Awaited<ReturnType<T>>) => boolean, threshold: [number, number], max: number) => Promise<Awaited<ReturnType<T>>>;
-export declare const rejectPending: <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(rejector: (reject: () => boolean) => T, hashFn?: H) => (...args: Parameters<T>) => Promise<unknown>;
