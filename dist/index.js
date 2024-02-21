@@ -14,7 +14,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
             if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
             if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
@@ -96,9 +96,21 @@ var singleton = function (fn, hashFn) {
     };
 };
 exports.singleton = singleton;
-var debounce = function (threshold, fn) {
+var debounce = function (threshold, fn, head, tail) {
+    if (head === void 0) { head = false; }
+    if (tail === void 0) { tail = true; }
     var t;
     var d;
+    var run = function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        var p = fn.apply(void 0, args);
+        p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
+        p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
+        p.finally(function () { return d = undefined; });
+    };
     return function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
@@ -106,12 +118,13 @@ var debounce = function (threshold, fn) {
         }
         if (!d)
             d = (0, exports.delegate)();
+        if (t === undefined && head)
+            run.apply(void 0, args);
         clearTimeout(t);
         t = setTimeout(function () {
-            var p = fn.apply(void 0, args);
-            p.then(function (x) { return d === null || d === void 0 ? void 0 : d.resolve(x); });
-            p.catch(function (x) { return d === null || d === void 0 ? void 0 : d.reject(x); });
-            p.finally(function () { return d = undefined; });
+            if (tail)
+                run.apply(void 0, args);
+            t = undefined;
         }, threshold);
         return d.promise;
     };
