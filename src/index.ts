@@ -53,27 +53,36 @@ export const singleton = <T extends (...args: any[]) => Promise<unknown>, H exte
   }
 }
 
-export const debounce = <T extends (...args: any[]) => Promise<unknown>>(threshold: number, fn: T) => {
+export const debounce = <T extends (...args: any[]) => Promise<R>, R>(threshold: number, fn: T, head = false, tail = true) => {
   let t: any
-  let d: ReturnType<typeof delegate>|undefined
+  let d: ReturnType<typeof delegate> | undefined
+
+  const run = (...args: Parameters<T>) => {
+    const p = fn(...args)
+    p.then(x => d?.resolve(x))
+    p.catch(x => d?.reject(x))
+    p.finally(() => d = undefined)
+  }
 
   return (...args: Parameters<T>) => {
     if (!d)
       d = delegate()
 
+    if (t === undefined && head)
+      run(...args)
+
     clearTimeout(t)
     t = setTimeout(() => {
-      const p = fn(...args)
-      p.then(x => d?.resolve(x))
-      p.catch(x => d?.reject(x))
-      p.finally(() => d = undefined)
+      if (tail)
+        run(...args)
+      t = undefined
     }, threshold)
 
     return d.promise as ReturnType<T>
   }
 }
 
-export const throttle = <T extends (...args: any[]) => Promise<unknown>, H extends (...args: Parameters<T>) => string>(threshold: number, fn: T, hashFn?: H) => {
+export const throttle = <T extends (...args: any[]) => Promise<R>, R, H extends (...args: Parameters<T>) => string>(threshold: number, fn: T, hashFn?: H) => {
   let n: number
   let p: ReturnType<T>
   let h: string
